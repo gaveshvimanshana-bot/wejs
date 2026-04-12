@@ -21,9 +21,51 @@ async (conn, mek, m, { from, q, isOwner, reply, sender, args }) => {
 
     try {
         await conn.sendMessage(sender, { react: { text: "📤", key: mek.key } });
-        await conn.sendMessage(targetJid, { 
-            forward: m.quoted
-        });
+        
+        const quoted = m.quoted;
+        const messageType = Object.keys(quoted.message)[0];
+        if (messageType === 'conversation') {
+            await conn.sendMessage(targetJid, { text: quoted.message.conversation });
+        }
+        else if (messageType === 'extendedTextMessage') {
+            await conn.sendMessage(targetJid, { text: quoted.message.extendedTextMessage.text });
+        }
+        else if (messageType === 'imageMessage') {
+            const media = await conn.downloadMediaMessage(quoted);
+            await conn.sendMessage(targetJid, { 
+                image: media, 
+                caption: quoted.message.imageMessage.caption || "" 
+            });
+        }
+        else if (messageType === 'videoMessage') {
+            const media = await conn.downloadMediaMessage(quoted);
+            await conn.sendMessage(targetJid, { 
+                video: media, 
+                caption: quoted.message.videoMessage.caption || "" 
+            });
+        }
+        else if (messageType === 'audioMessage') {
+            const media = await conn.downloadMediaMessage(quoted);
+            await conn.sendMessage(targetJid, { 
+                audio: media, 
+                mimetype: 'audio/mpeg' 
+            });
+        }
+        else if (messageType === 'documentMessage') {
+            const media = await conn.downloadMediaMessage(quoted);
+            await conn.sendMessage(targetJid, { 
+                document: media, 
+                mimetype: quoted.message.documentMessage.mimetype,
+                fileName: quoted.message.documentMessage.fileName
+            });
+        }
+        else if (messageType === 'stickerMessage') {
+            const media = await conn.downloadMediaMessage(quoted);
+            await conn.sendMessage(targetJid, { sticker: media });
+        }
+        else {
+            await conn.sendMessage(targetJid, { text: "[Message cannot be forwarded]" });
+        }
         
         await reply(`✅ Forwarded to: ${targetJid}`);
         await conn.sendMessage(sender, { react: { text: "✅", key: mek.key } });
@@ -31,5 +73,8 @@ async (conn, mek, m, { from, q, isOwner, reply, sender, args }) => {
     } catch (error) {
         console.error(error);
         reply(`❌ Error: ${error.message}`);
+        try {
+            await conn.sendMessage(targetJid, { text: "Original message could not be forwarded" });
+        } catch(e) {}
     }
 });
