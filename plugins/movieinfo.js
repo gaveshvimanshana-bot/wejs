@@ -3,7 +3,7 @@ const { cmd } = require("../command");
 
 cmd({
   pattern: "in",
-  desc: "Single Movie Info (no api + trailer + plot)",
+  desc: "Movie info (no api + trailer + description fix)",
   category: "search",
   react: "🎬",
   filename: __filename
@@ -15,7 +15,7 @@ async (conn, mek, m, { args }) => {
 
     const query = args.join(" ");
 
-    // SEARCH
+    // SEARCH MOVIE
     const res = await axios.get(`https://imdb.iamidiotareyoutoo.com/search?q=${encodeURIComponent(query)}`);
     const movie = res.data.description[0];
 
@@ -28,14 +28,27 @@ async (conn, mek, m, { args }) => {
     // TRAILER LINK
     const trailer = `https://www.youtube.com/results?search_query=${encodeURIComponent(title + " " + year + " trailer")}`;
 
-    // FAKE DESCRIPTION (fallback)
+    // ================= DESCRIPTION FIX =================
     let description = "No description available 😢";
 
-    // try get more details (optional API)
     try {
       const more = await axios.get(`https://imdb.iamidiotareyoutoo.com/title/${imdbID}`);
-      description = more.data.short?.description || description;
-    } catch (e) {}
+
+      if (more.data?.short?.description) {
+        description = more.data.short.description;
+      } else if (more.data?.description) {
+        description = more.data.description;
+      }
+
+    } catch (e) {
+      console.log("desc error", e);
+    }
+
+    // fallback (always show something)
+    if (!description || description.length < 10) {
+      description = `${title} (${year}) movie ekak. Full description unavailable 😅`;
+    }
+    // ==================================================
 
     let msg = `🎬 *MOVIE INFO*\n`;
     msg += `━━━━━━━━━━━━━━━\n\n`;
