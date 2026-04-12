@@ -1,14 +1,11 @@
-const { cmd, commands } = require("../command");  
-const fs = require("fs");  
-const path = require("path");  
+const { cmd, commands } = require("../command");
 
-const pendingMenu = {};  
-const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];  
+const pendingMenu = {};
+const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];
 
 const headerImage =
   "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";
 
-// ⏱ runtime
 function formatRuntime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -16,32 +13,27 @@ function formatRuntime(seconds) {
   return `${h}h ${m}m ${s}s`;
 }
 
-// ================= MENU COMMAND =================
+// ================= MENU =================
 cmd({
   pattern: "menu",
   react: "📋",
-  desc: "Show command categories",
   category: "main",
   filename: __filename
-}, async (test, m, msg, { from, sender, pushname }) => {
-
-  await test.sendMessage(from, { react: { text: "📋", key: m.key } });
+}, async (client, m, msg, { from, sender, pushname }) => {
 
   const commandMap = {};
 
-  for (const command of commands) {
-    if (command.dontAddCommandList) continue;
-
-    const category = (command.category || "MISC").toUpperCase();
-
-    if (!commandMap[category]) commandMap[category] = [];
-    commandMap[category].push(command);
+  for (const c of commands) {
+    if (c.dontAddCommandList) continue;
+    const cat = (c.category || "MISC").toUpperCase();
+    if (!commandMap[cat]) commandMap[cat] = [];
+    commandMap[cat].push(c);
   }
 
   const categories = Object.keys(commandMap);
   const uptime = process.uptime();
 
-  let menuText = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
+  let text = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
 ┃ 👋 Hello: *${pushname || "User"}*
 ┃ 👑 Owner: *VIMA-MD*
 ┃ ⏱ Runtime: *${formatRuntime(uptime)}*
@@ -50,77 +42,68 @@ cmd({
 ───────────────────────\n`;
 
   categories.forEach((cat, i) => {
-    const emojiIndex = (i + 1)
-      .toString()
-      .split("")
-      .map(n => numberEmojis[n])
-      .join("");
-
-    menuText += `┃ ${emojiIndex} *${cat}* (${commandMap[cat].length})\n`;
+    const num = (i + 1).toString().split("").map(n => numberEmojis[n]).join("");
+    text += `┃ ${num} *${cat}* (${commandMap[cat].length})\n`;
   });
 
-  menuText += `───────────────────────\n`;
+  text += `───────────────────────\n`;
 
-  // store session
   pendingMenu[sender] = {
-    step: "category",
     commandMap,
     categories,
-    lastMsgId: null
+    active: true
   };
 
-  await test.sendMessage(from, {
+  await client.sendMessage(from, {
     image: { url: headerImage },
-    caption: menuText,
+    caption: text,
   }, { quoted: m });
 
 });
 
 
-// ================= CATEGORY HANDLER =================
+// ================= GLOBAL MESSAGE HANDLER =================
+// 🔥 IMPORTANT: This is NOT filter-based, so no dead issue
 cmd({
-  filter: (text, { sender }) =>
-    pendingMenu[sender] &&
-    pendingMenu[sender].step === "category" &&
-    /^[1-9][0-9]*$/.test((text || "").trim())
-}, async (test, m, msg, { from, body, sender, reply }) => {
+  on: "text"
+}, async (client, m, msg, { from, sender, body, reply }) => {
 
   const session = pendingMenu[sender];
-  if (!session) return;
+  if (!session || !session.active) return;
 
-  // 🔥 prevent duplicate triggers (safe fix)
-  if (session.lastMsgId === m.key.id) return;
-  session.lastMsgId = m.key.id;
+  const text = (body || "").trim();
 
-  const index = parseInt((body || "").trim()) - 1;
+  // only numbers
+  if (!/^[1-9][0-9]*$/.test(text)) return;
+
+  const index = parseInt(text) - 1;
 
   if (index < 0 || index >= session.categories.length) {
     delete pendingMenu[sender];
     return reply("❌ Invalid selection.");
   }
 
-  const selectedCategory = session.categories[index];
-  const cmdsInCategory = session.commandMap[selectedCategory];
+  const category = session.categories[index];
+  const cmds = session.commandMap[category];
 
-  let cmdText = `*${selectedCategory} COMMANDS*\n\n`;
+  let out = `*${category} COMMANDS*\n\n`;
 
-  cmdsInCategory.forEach(c => {
+  cmds.forEach(c => {
     const patterns = [c.pattern, ...(c.alias || [])]
       .filter(Boolean)
       .map(p => `.${p}`);
 
-    cmdText += `${patterns.join(", ")} - ${c.desc || "No description"}\n`;
+    out += `${patterns.join(", ")} - ${c.desc || "No description"}\n`;
   });
 
-  cmdText += `\n───────────────────────\n`;
-  cmdText += `📊 Total Commands: ${cmdsInCategory.length}\n`;
+  out += `\n📊 Total: ${cmds.length}`;
 
-  await test.sendMessage(from, {
+  await client.sendMessage(from, {
     image: { url: headerImage },
-    caption: cmdText,
+    caption: out,
   }, { quoted: m });
 
-  // cleanup session (important)
+  // 🔥 reset session (IMPORTANT)
   delete pendingMenu[sender];
 
 });
