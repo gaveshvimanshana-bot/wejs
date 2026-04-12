@@ -2,7 +2,7 @@ const axios = require("axios");
 const { cmd } = require("../command");
 
 cmd({
-  pattern: "movie",
+  pattern: "moviein",
   desc: "Get movie info (free no api)",
   category: "search",
   react: "🎬",
