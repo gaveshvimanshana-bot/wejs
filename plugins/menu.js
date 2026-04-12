@@ -32,8 +32,8 @@ let menuText = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
 ┃ 📋 Select a category number below
 ┃ ⚡ Powered by VIMA-MD
 ╰━━━━━━━━━━━━━━━━⬣
+───────────────────────\n`;
 
-menuText += ───────────────────────\n;
 
 categories.forEach((cat, i) => {
 const emojiIndex = (i + 1).toString().split("").map(n => numberEmojis[n]).join("");
