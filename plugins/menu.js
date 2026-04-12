@@ -32,7 +32,7 @@ let menuText = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
 ┃ 📋 Select a category number below
 ┃ ⚡ Powered by VIMA-MD
 ╰━━━━━━━━━━━━━━━━⬣
-;
+
 menuText += ───────────────────────\n;
 
 categories.forEach((cat, i) => {
