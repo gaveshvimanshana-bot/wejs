@@ -1,190 +1,276 @@
-const { cmd } = require("../command");  
-const puppeteer = require("puppeteer");  
+const { cmd } = require("../command");
+const puppeteer = require("puppeteer");
 
-const pendingSearch = {};  
-const pendingQuality = {};  
+const pendingSearch = {};
+const pendingQuality = {};
 
-function normalizeQuality(text) {  
-if (!text) return null;  
-text = text.toUpperCase();  
-if (/1080|FHD/.test(text)) return "1080p";  
-if (/720|HD/.test(text)) return "720p";  
-if (/480|SD/.test(text)) return "480p";  
-return text;  
-}  
+/* ===================== HELPERS ===================== */
 
-function getDirectPixeldrainUrl(url) {  
-const match = url.match(/pixeldrain.com\/u\/(\w+)/);  
-if (!match) return null;  
-return `https://pixeldrain.com/api/file/${match[1]}?download`;  
-}  
+function normalizeQuality(text) {
+  if (!text) return null;
+  text = text.toUpperCase();
+  if (/1080|FHD/.test(text)) return "1080p";
+  if (/720|HD/.test(text)) return "720p";
+  if (/480|SD/.test(text)) return "480p";
+  return text;
+}
 
-async function searchMovies(query) {  
-const searchUrl = `https://sinhalasub.lk/?s=${encodeURIComponent(query)}&post_type=movies`;  
+function getDirectPixeldrainUrl(url) {
+  const match = url.match(/pixeldrain\.com\/u\/(\w+)/);
+  if (!match) return null;
+  return `https://pixeldrain.com/api/file/${match[1]}?download`;
+}
 
-const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });  
-const page = await browser.newPage();  
-await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 30000 });  
+/* ===================== SCRAPER ===================== */
 
-const results = await page.$$eval(".display-item .item-box", boxes =>  
-boxes.slice(0, 10).map((box, index) => {  
-const a = box.querySelector("a");  
-const img = box.querySelector(".thumb");  
-const lang = box.querySelector(".item-desc-giha .language")?.textContent || "";  
-const quality = box.querySelector(".item-desc-giha .quality")?.textContent || "";  
-const qty = box.querySelector(".item-desc-giha .qty")?.textContent || "";  
+async function searchMovies(query) {
+  const url = `https://sinhalasub.lk/?s=${encodeURIComponent(query)}&post_type=movies`;
 
-return {  
-id: index + 1,  
-title: a?.title?.trim() || "",  
-movieUrl: a?.href || "",  
-thumb: img?.src || "",  
-language: lang.trim(),  
-quality: quality.trim(),  
-qty: qty.trim(),  
-};  
-}).filter(m => m.title && m.movieUrl)  
-);  
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
+  const page = await browser.newPage();
 
-await browser.close();  
-return results;  
-}  
+  await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
 
-async function getMovieMetadata(url) {  
-const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });  
-const page = await browser.newPage();  
-await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });  
+  const results = await page.$$eval(".display-item .item-box", boxes =>
+    boxes.slice(0, 10).map((box, index) => {
+      const a = box.querySelector("a");
+      const img = box.querySelector(".thumb");
 
-const metadata = await page.evaluate(() => {  
-const getText = el => el?.textContent.trim() || "";  
-const getList = selector => Array.from(document.querySelectorAll(selector)).map(el => el.textContent.trim());  
+      const lang = box.querySelector(".item-desc-giha .language")?.textContent || "";
+      const quality = box.querySelector(".item-desc-giha .quality")?.textContent || "";
+      const qty = box.querySelector(".item-desc-giha .qty")?.textContent || "";
 
-const title = getText(document.querySelector(".info-details .details-title h3"));  
+      return {
+        id: index + 1,
+        title: a?.title?.trim() || "",
+        movieUrl: a?.href || "",
+        thumb: img?.src || "",
+        language: lang.trim(),
+        quality: quality.trim(),
+        qty: qty.trim(),
+      };
+    }).filter(m => m.title && m.movieUrl)
+  );
 
-let language = "", directors = [], stars = [];  
+  await browser.close();
+  return results;
+}
 
-document.querySelectorAll(".info-col p").forEach(p => {  
-const strong = p.querySelector("strong");  
-if (!strong) return;  
+async function getMovieMetadata(url) {
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
+  const page = await browser.newPage();
 
-const txt = strong.textContent.trim();  
+  await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
 
-if (txt.includes("Language:")) language = strong.nextSibling?.textContent?.trim() || "";  
-if (txt.includes("Director:")) directors = Array.from(p.querySelectorAll("a")).map(a => a.textContent.trim());  
-if (txt.includes("Stars:")) stars = Array.from(p.querySelectorAll("a")).map(a => a.textContent.trim());  
-});  
+  const data = await page.evaluate(() => {
+    const getText = el => el?.textContent.trim() || "";
+    const getList = sel => Array.from(document.querySelectorAll(sel)).map(e => e.textContent.trim());
 
-const duration = getText(document.querySelector(".info-details .data-views[itemprop='duration']"));  
-const imdb = getText(document.querySelector(".info-details .data-imdb"))?.replace("IMDb:", "").trim();  
-const genres = getList(".details-genre a");  
-const thumbnail = document.querySelector(".splash-bg img")?.src || "";  
+    const title = getText(document.querySelector(".info-details .details-title h3"));
 
-return { title, language, duration, imdb, genres, directors, stars, thumbnail };  
-});  
+    let language = "", directors = [], stars = [];
 
-await browser.close();  
-return metadata;  
-}  
+    document.querySelectorAll(".info-col p").forEach(p => {
+      const strong = p.querySelector("strong");
+      if (!strong) return;
 
-async function getPixeldrainLinks(movieUrl) {  
-const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });  
-const page = await browser.newPage();  
-await page.goto(movieUrl, { waitUntil: "networkidle2", timeout: 30000 });  
+      const txt = strong.textContent.trim();
 
-const linksData = await page.$$eval(".link-pixeldrain tbody tr", rows =>  
-rows.map(row => {  
-const a = row.querySelector(".link-opt a");  
-const quality = row.querySelector(".quality")?.textContent.trim() || "";  
-const size = row.querySelector("td:nth-child(3) span")?.textContent.trim() || "";  
-return { pageLink: a?.href || "", quality, size };  
-})  
-);  
+      if (txt.includes("Language:")) language = strong.nextSibling?.textContent?.trim() || "";
+      if (txt.includes("Director:")) directors = Array.from(p.querySelectorAll("a")).map(a => a.textContent.trim());
+      if (txt.includes("Stars:")) stars = Array.from(p.querySelectorAll("a")).map(a => a.textContent.trim());
+    });
 
-const directLinks = [];  
+    return {
+      title,
+      language,
+      duration: getText(document.querySelector(".data-views[itemprop='duration']")),
+      imdb: getText(document.querySelector(".data-imdb"))?.replace("IMDb:", "").trim(),
+      genres: getList(".details-genre a"),
+      directors,
+      stars,
+      thumbnail: document.querySelector(".splash-bg img")?.src || ""
+    };
+  });
 
-for (const l of linksData) {  
-try {  
-const subPage = await browser.newPage();  
-await subPage.goto(l.pageLink, { waitUntil: "networkidle2", timeout: 30000 });  
+  await browser.close();
+  return data;
+}
 
-await new Promise(r => setTimeout(r, 12000));  
+async function getPixeldrainLinks(movieUrl) {
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
+  const page = await browser.newPage();
 
-const finalUrl = await subPage.$eval(  
-".wait-done a[href^='https://pixeldrain.com/']",  
-el => el.href  
-).catch(() => null);  
+  await page.goto(movieUrl, { waitUntil: "networkidle2", timeout: 30000 });
 
-if (finalUrl) {  
-let sizeMB = 0;  
-const sizeText = l.size.toUpperCase();  
+  const linksData = await page.$$eval(".link-pixeldrain tbody tr", rows =>
+    rows.map(row => {
+      const a = row.querySelector(".link-opt a");
+      const quality = row.querySelector(".quality")?.textContent.trim() || "";
+      const size = row.querySelector("td:nth-child(3) span")?.textContent.trim() || "";
+      return { pageLink: a?.href || "", quality, size };
+    })
+  );
 
-if (sizeText.includes("GB")) sizeMB = parseFloat(sizeText) * 1024;  
-else if (sizeText.includes("MB")) sizeMB = parseFloat(sizeText);  
+  const directLinks = [];
 
-if (sizeMB <= 2048) {  
-directLinks.push({  
-link: finalUrl,  
-quality: normalizeQuality(l.quality),  
-size: l.size  
-});  
-}  
-}  
+  for (const l of linksData) {
+    try {
+      const subPage = await browser.newPage();
+      await subPage.goto(l.pageLink, { waitUntil: "networkidle2", timeout: 30000 });
 
-await subPage.close();  
-} catch (e) {  
-continue;  
-}  
-}  
+      await new Promise(r => setTimeout(r, 8000));
 
-await browser.close();  
-return directLinks;  
-}  
+      const finalUrl = await subPage.$eval(
+        ".wait-done a[href^='https://pixeldrain.com/']",
+        el => el.href
+      ).catch(() => null);
 
-/* ===================== SEARCH ===================== */  
+      if (finalUrl) {
+        directLinks.push({
+          link: finalUrl,
+          quality: normalizeQuality(l.quality),
+          size: l.size
+        });
+      }
 
-cmd({  
-pattern: "movie",  
-alias: ["sinhalasub","films","cinema"],  
-react: "🎬",  
-desc: "Search movies",  
-category: "download",  
-filename: __filename  
-}, async (hansa, mek, m, { from, q, sender, reply }) => {  
+      await subPage.close();
+    } catch (e) {}
+  }
 
-if (!q) return reply("🎬 Movie Search\nUse: movie name");  
+  await browser.close();
+  return directLinks;
+}
 
-reply("🔍 Searching...");  
+/* ===================== STEP 1: SEARCH ===================== */
 
-const searchResults = await searchMovies(q);  
+cmd({
+  pattern: "movie",
+  alias: ["sinhalasub", "films", "cinema"],
+  react: "🎬",
+  desc: "Movie search",
+  category: "download",
+  filename: __filename
+}, async (hansa, mek, m, { from, q, sender }) => {
 
-if (!searchResults.length) return reply("❌ No movies found!");  
+  if (!q) return hansa.sendMessage(from, { text: "Use: movie name" }, { quoted: m });
 
-pendingSearch[sender] = { results: searchResults, timestamp: Date.now() };  
+  const results = await searchMovies(q);
 
-let text = "🎬 *Search Results*\n\n";  
+  if (!results.length) {
+    return hansa.sendMessage(from, { text: "❌ No movies found" }, { quoted: m });
+  }
 
-searchResults.forEach((m, i) => {  
-text += `*${i + 1}.* ${m.title}\n`;  
-text += `   📝 Language: ${m.language}\n`;  
-text += `   📊 Quality: ${m.quality}\n`;  
-text += `   🎞️ Format: ${m.qty}\n\n`;  
-});  
+  pendingSearch[sender] = {
+    results,
+    time: Date.now()
+  };
 
-text += `📌 Reply with number (1-${searchResults.length})\n\n`;  
+  let msg = "🎬 *MOVIE RESULTS*\n\n";
 
-text += `
-━━━━━━━━━━━━━━
-✨ Nexus5 Movie Bot
-> Powered by Vima MD 🤖
-━━━━━━━━━━━━━━`;  
+  results.forEach((r, i) => {
+    msg += `${i + 1}. ${r.title}\n`;
+    msg += `   Language: ${r.language}\n`;
+    msg += `   Quality: ${r.quality}\n\n`;
+  });
 
-await hansa.sendMessage(from, {  
-image: {  
-url: "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg"  
-},  
-caption: text  
-}, { quoted: mek });  
+  msg += "Reply number to select movie";
 
-});  
+  await hansa.sendMessage(from, { text: msg }, { quoted: m });
+});
+
+/* ===================== STEP 2: SELECT MOVIE ===================== */
+
+cmd({
+  on: "text",
+  filter: (text, { sender }) =>
+    pendingSearch[sender] && /^\d+$/.test(text.trim())
+}, async (hansa, mek, m, { body, sender, from }) => {
+
+  const index = parseInt(body.trim()) - 1;
+  const session = pendingSearch[sender];
+
+  if (!session || !session.results[index]) return;
+
+  const selected = session.results[index];
+  delete pendingSearch[sender];
+
+  const meta = await getMovieMetadata(selected.movieUrl);
+
+  let msg = `🎬 *${meta.title}*\n`;
+  msg += `Language: ${meta.language}\n`;
+  msg += `Duration: ${meta.duration}\n`;
+  msg += `IMDb: ${meta.imdb}\n`;
+  msg += `Genres: ${meta.genres.join(", ")}\n`;
+  msg += `Stars: ${meta.stars.slice(0, 5).join(", ")}\n\n`;
+  msg += "Fetching download links...";
+
+  await hansa.sendMessage(from, { text: msg }, { quoted: m });
+
+  const links = await getPixeldrainLinks(selected.movieUrl);
+
+  if (!links.length) {
+    return hansa.sendMessage(from, { text: "❌ No download links" }, { quoted: m });
+  }
+
+  pendingQuality[sender] = {
+    movie: { meta, links },
+    time: Date.now()
+  };
+
+  let qmsg = "📥 *QUALITIES*\n\n";
+
+  links.forEach((l, i) => {
+    qmsg += `${i + 1}. ${l.quality} - ${l.size}\n`;
+  });
+
+  qmsg += "\nReply number to download";
+
+  await hansa.sendMessage(from, { text: qmsg }, { quoted: m });
+});
+
+/* ===================== STEP 3: DOWNLOAD ===================== */
+
+cmd({
+  on: "text",
+  filter: (text, { sender }) =>
+    pendingQuality[sender] && /^\d+$/.test(text.trim())
+}, async (hansa, mek, m, { body, sender, from }) => {
+
+  const index = parseInt(body.trim()) - 1;
+  const session = pendingQuality[sender];
+
+  if (!session || !session.movie.links[index]) return;
+
+  const selected = session.movie.links[index];
+  delete pendingQuality[sender];
+
+  const url = getDirectPixeldrainUrl(selected.link);
+
+  if (!url) return hansa.sendMessage(from, { text: "❌ Invalid link" }, { quoted: m });
+
+  await hansa.sendMessage(from, {
+    document: { url },
+    mimetype: "video/mp4",
+    fileName: `${session.movie.meta.title}-${selected.quality}.mp4`,
+    caption: `🎬 ${session.movie.meta.title}\n📊 ${selected.quality}`
+  }, { quoted: m });
+});
+
+/* ===================== CLEANUP ===================== */
+
+setInterval(() => {
+  const now = Date.now();
+  const timeout = 10 * 60 * 1000;
+
+  for (const s in pendingSearch)
+    if (now - pendingSearch[s].time > timeout)
+      delete pendingSearch[s];
+
+  for (const s in pendingQuality)
+    if (now - pendingQuality[s].time > timeout)
+      delete pendingQuality[s];
+
+}, 60000);
 
 module.exports = { pendingSearch, pendingQuality };
