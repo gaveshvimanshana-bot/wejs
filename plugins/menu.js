@@ -25,6 +25,7 @@ cmd({
 
   for (const c of commands) {
     if (c.dontAddCommandList) continue;
+
     const cat = (c.category || "MISC").toUpperCase();
     if (!commandMap[cat]) commandMap[cat] = [];
     commandMap[cat].push(c);
@@ -51,7 +52,7 @@ cmd({
   pendingMenu[sender] = {
     commandMap,
     categories,
-    active: true
+    used: false
   };
 
   await client.sendMessage(from, {
@@ -62,21 +63,21 @@ cmd({
 });
 
 
-// ================= GLOBAL MESSAGE HANDLER =================
-// 🔥 IMPORTANT: This is NOT filter-based, so no dead issue
+// ================= CATEGORY HANDLER (FIXED) =================
 cmd({
-  on: "text"
+  filter: (text, { sender }) =>
+    pendingMenu[sender] &&
+    /^[1-9][0-9]*$/.test((text || "").trim())
 }, async (client, m, msg, { from, sender, body, reply }) => {
 
   const session = pendingMenu[sender];
-  if (!session || !session.active) return;
+  if (!session) return;
 
-  const text = (body || "").trim();
+  // 🔥 prevent double trigger
+  if (session.used) return;
+  session.used = true;
 
-  // only numbers
-  if (!/^[1-9][0-9]*$/.test(text)) return;
-
-  const index = parseInt(text) - 1;
+  const index = parseInt((body || "").trim()) - 1;
 
   if (index < 0 || index >= session.categories.length) {
     delete pendingMenu[sender];
@@ -103,7 +104,7 @@ cmd({
     caption: out,
   }, { quoted: m });
 
-  // 🔥 reset session (IMPORTANT)
+  // 🔥 reset properly (important)
   delete pendingMenu[sender];
 
 });
