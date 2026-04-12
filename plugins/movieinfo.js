@@ -1,13 +1,9 @@
 const axios = require("axios");
 const { cmd } = require("../command");
 
-// store user selections
-global.movieSelection = global.movieSelection || {};
-
-// ================= SEARCH COMMAND =================
 cmd({
-  pattern: "info",
-  desc: "Pro Movie Info (no api + trailer)",
+  pattern: "in",
+  desc: "Single Movie Info (no api + trailer + plot)",
   category: "search",
   react: "🎬",
   filename: __filename
@@ -18,84 +14,51 @@ async (conn, mek, m, { args }) => {
     if (!args[0]) return m.reply("❌ Movie name ekak denna!");
 
     const query = args.join(" ");
+
+    // SEARCH
     const res = await axios.get(`https://imdb.iamidiotareyoutoo.com/search?q=${encodeURIComponent(query)}`);
+    const movie = res.data.description[0];
 
-    const list = res.data.description;
+    if (!movie) return m.reply("❌ Movie hoyaganna ba!");
 
-    if (!list || !list.length) {
-      return m.reply("❌ Movie hoyaganna ba!");
-    }
+    const title = movie["#TITLE"];
+    const year = movie["#YEAR"];
+    const imdbID = movie["#IMDB_ID"];
 
-    let msg = `🎬 *MOVIE SEARCH RESULTS*\n`;
+    // TRAILER LINK
+    const trailer = `https://www.youtube.com/results?search_query=${encodeURIComponent(title + " " + year + " trailer")}`;
+
+    // FAKE DESCRIPTION (fallback)
+    let description = "No description available 😢";
+
+    // try get more details (optional API)
+    try {
+      const more = await axios.get(`https://imdb.iamidiotareyoutoo.com/title/${imdbID}`);
+      description = more.data.short?.description || description;
+    } catch (e) {}
+
+    let msg = `🎬 *MOVIE INFO*\n`;
     msg += `━━━━━━━━━━━━━━━\n\n`;
 
-    // top 3 results
-    for (let i = 0; i < Math.min(3, list.length); i++) {
-      let mv = list[i];
+    msg += `📌 *Title:* ${title}\n`;
+    msg += `📅 *Year:* ${year}\n`;
+    msg += `⭐ *Rating:* ${movie["#IMDB_RATING"] || "N/A"}\n`;
+    msg += `🎭 *Actors:* ${movie["#ACTORS"] || "N/A"}\n\n`;
 
-      msg += `🔢 *${i + 1}.* ${mv["#TITLE"]}\n`;
-      msg += `📅 Year: ${mv["#YEAR"]}\n`;
-      msg += `⭐ Rating: ${mv["#IMDB_RATING"] || "N/A"}\n`;
-      msg += `━━━━━━━━━━━━━━━\n`;
-    }
+    msg += `📝 *Description:*\n${description}\n\n`;
 
-    msg += `\n💡 Reply 1 / 2 / 3 for full info`;
+    msg += `🎥 *Trailer:*\n${trailer}\n`;
 
-    // save list
-    global.movieSelection[m.sender] = list;
-
-    await conn.sendMessage(m.chat, {
-      image: { url: list[0]["#IMG_POSTER"] },
-      caption: msg
-    }, { quoted: mek });
-
-  } catch (e) {
-    console.log(e);
-    m.reply("❌ Error ekak awaa!");
-  }
-
-});
-
-
-// ================= SELECT (REPLY NUMBER) =================
-cmd({
-  on: "text"
-}, async (conn, mek, m) => {
-
-  try {
-    if (!global.movieSelection[m.sender]) return;
-
-    const num = parseInt(m.body);
-
-    if (isNaN(num) || num < 1 || num > 3) return;
-
-    const movie = global.movieSelection[m.sender][num - 1];
-
-    let title = movie["#TITLE"];
-    let year = movie["#YEAR"];
-
-    // trailer link
-    let trailer = `https://www.youtube.com/results?search_query=${encodeURIComponent(title + " " + year + " trailer")}`;
-
-    let msg = `🎬 *FULL MOVIE INFO*\n\n`;
-    msg += `📌 Title: ${title}\n`;
-    msg += `📅 Year: ${year}\n`;
-    msg += `⭐ Rating: ${movie["#IMDB_RATING"] || "N/A"}\n`;
-    msg += `🎭 Actors: ${movie["#ACTORS"] || "N/A"}\n`;
-    msg += `🆔 IMDb ID: ${movie["#IMDB_ID"]}\n\n`;
-
-    msg += `🎥 Trailer:\n${trailer}`;
+    msg += `━━━━━━━━━━━━━━━`;
 
     await conn.sendMessage(m.chat, {
       image: { url: movie["#IMG_POSTER"] },
       caption: msg
     }, { quoted: mek });
 
-    // clear session
-    delete global.movieSelection[m.sender];
-
-  } catch (e) {
-    console.log(e);
+  } catch (err) {
+    console.log(err);
+    m.reply("❌ Error ekak awaa!");
   }
 
 });
