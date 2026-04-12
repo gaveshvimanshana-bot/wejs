@@ -6,7 +6,7 @@ global.movieSelection = global.movieSelection || {};
 
 // ================= SEARCH COMMAND =================
 cmd({
-  pattern: "moviein",
+  pattern: "info",
   desc: "Pro Movie Info (no api + trailer)",
   category: "search",
   react: "🎬",
