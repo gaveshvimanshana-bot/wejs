@@ -140,7 +140,7 @@ await browser.close();
 return directLinks;
 }
 
-/* ===================== MOVIE SEARCH ===================== */
+/* ===================== SEARCH ===================== */
 
 cmd({
 pattern: "movie",
@@ -151,7 +151,7 @@ category: "download",
 filename: __filename
 }, async (hansa, mek, m, { from, q, sender, reply }) => {
 
-if (!q) return reply("🎬 *Movie Search Plugin*\nUsage: movie name");
+if (!q) return reply("🎬 *Movie Search*\nUse: movie name");
 
 reply("🔍 Searching...");
 
@@ -171,12 +171,17 @@ text += `   🎞️ Format: ${m.qty}\n\n`;
 });
 
 text += `📌 Reply with number (1-${searchResults.length})\n\n`;
-text += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
+text += `━━━━━━━━━━━━━━\n✨ Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
 
-reply(text);
+/* SEND IMAGE + CAPTION */
+await hansa.sendMessage(from, {
+image: { url: searchResults[0]?.thumb || "https://i.ibb.co/7QpKsCX/movie-banner.jpg" },
+caption: text
+}, { quoted: mek });
+
 });
 
-/* ===================== MOVIE DETAILS ===================== */
+/* ===================== DETAILS ===================== */
 
 cmd({
 filter: (text, { sender }) =>
@@ -194,35 +199,30 @@ delete pendingSearch[sender];
 
 const metadata = await getMovieMetadata(selected.movieUrl);
 
-/* ---------- DETAILS CARD ---------- */
-
+/* DETAILS CARD */
 let msg = `🎬 *${metadata.title}*\n\n`;
-
 msg += `📝 Language: ${metadata.language}\n`;
 msg += `⏱️ Duration: ${metadata.duration}\n`;
 msg += `⭐ IMDb: ${metadata.imdb}\n`;
 msg += `🎭 Genres: ${metadata.genres.join(", ")}\n`;
 msg += `🎬 Directors: ${metadata.directors.join(", ")}\n`;
 msg += `🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n\n`;
+msg += `━━━━━━━━━━━━━━\n✨ Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
 
-msg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
-
-/* send movie card */
 if (metadata.thumbnail) {
 await hansa.sendMessage(from, { image: { url: metadata.thumbnail }, caption: msg }, { quoted: mek });
 } else {
 await hansa.sendMessage(from, { text: msg }, { quoted: mek });
 }
 
-/* ---------- SEPARATE FETCH MESSAGE ---------- */
+/* FETCH MESSAGE */
 await hansa.sendMessage(from, {
 text: "🔗 Fetching download links... please wait 🍿"
 }, { quoted: mek });
 
-/* ---------- GET LINKS ---------- */
 const downloadLinks = await getPixeldrainLinks(selected.movieUrl);
 
-if (!downloadLinks.length) return reply("❌ No download links found (<2GB)!");
+if (!downloadLinks.length) return reply("❌ No download links found!");
 
 pendingQuality[sender] = { movie: { metadata, downloadLinks }, timestamp: Date.now() };
 
@@ -234,9 +234,10 @@ qualityMsg += `   💾 Size: ${d.size}\n\n`;
 });
 
 qualityMsg += `📌 Reply with number to download 🍿\n\n`;
-qualityMsg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
+qualityMsg += `━━━━━━━━━━━━━━\n✨ Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
 
 await hansa.sendMessage(from, { text: qualityMsg }, { quoted: mek });
+
 });
 
 /* ===================== DOWNLOAD ===================== */
@@ -266,7 +267,7 @@ await hansa.sendMessage(from, {
 document: { url: directUrl },
 mimetype: "video/mp4",
 fileName: `${movie.metadata.title.substring(0,50)} - ${selectedLink.quality}.mp4`,
-caption: `🎬 *${movie.metadata.title}*\n\n📊 Quality: ${selectedLink.quality}\n💾 Size: ${selectedLink.size}\n\n━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`
+caption: `🎬 *${movie.metadata.title}*\n\n📊 Quality: ${selectedLink.quality}\n💾 Size: ${selectedLink.size}\n\n━━━━━━━━━━━━━━\n✨ Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`
 }, { quoted: mek });
 
 } catch (e) {
