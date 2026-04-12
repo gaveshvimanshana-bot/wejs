@@ -7,7 +7,6 @@ const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣
 
 const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";
 
-/* ================= MENU ================= */
 cmd({
   pattern: "menu",
   react: "📋",
@@ -22,16 +21,14 @@ cmd({
 
   for (const command of commands) {
     if (command.dontAddCommandList) continue;
-
     const category = (command.category || "MISC").toUpperCase();
-
     if (!commandMap[category]) commandMap[category] = [];
     commandMap[category].push(command);
   }
 
   const categories = Object.keys(commandMap);
 
-  let menuText = `╭━━━〔 🤖 MAIN MENU 〕━━━⬣
+  let menuText = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
 ┃ 👋 Hello!
 ┃ 📋 Select a category number below
 ┃ ⚡ Powered by VIMA-MD
@@ -59,26 +56,20 @@ cmd({
 });
 
 
-/* ================= CATEGORY HANDLER ================= */
 cmd({
-  pattern: null
+  filter: (text, { sender }) =>
+    pendingMenu[sender] &&
+    pendingMenu[sender].step === "category" &&
+    /^[1-9][0-9]*$/.test((text || "").trim())
 }, async (test, m, msg, { from, body, sender, reply }) => {
-
-  if (!pendingMenu[sender]) return;
-  if (pendingMenu[sender].step !== "category") return;
-
-  const text = (body || "").trim();
-
-  if (!/^[0-9]+$/.test(text)) return;
 
   await test.sendMessage(from, { react: { text: "✅", key: m.key } });
 
   const { commandMap, categories } = pendingMenu[sender];
-  const index = parseInt(text) - 1;
+  const index = parseInt((body || "").trim()) - 1;
 
-  if (index < 0 || index >= categories.length) {
+  if (index < 0 || index >= categories.length)
     return reply("❌ Invalid selection.");
-  }
 
   const selectedCategory = categories[index];
   const cmdsInCategory = commandMap[selectedCategory];
