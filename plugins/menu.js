@@ -5,7 +5,7 @@ const path = require("path");
 const pendingMenu = {};
 const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];
 
-const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/hnsk/main/IMG-20260410-WA0000.jpg";
+const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";
 
 cmd({
   pattern: "menu",
