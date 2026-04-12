@@ -5,7 +5,7 @@ const path = require("path");
 const pendingMenu = {};  
 const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];  
 
-const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";  
+const headerImage = "https://cloud.laksidunimsara.com/f/Gavesh/1776016994166-file_0000000029e871fab9c27ac6f4da761b.png";  
 
 // ⏱ runtime function (UNCHANGED - just added)
 function formatRuntime(seconds) {
