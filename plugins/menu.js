@@ -1,114 +1,79 @@
 const { cmd, commands } = require("../command");
+const fs = require("fs");
+const path = require("path");
 
 const pendingMenu = {};
 const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];
 
 const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";
 
-/* ===================== MENU COMMAND ===================== */
 cmd({
-  pattern: "menu",
-  react: "📋",
-  desc: "Show command categories",
-  category: "main",
-  filename: __filename
-}, async (conn, m, msg, { from, sender, reply }) => {
+pattern: "menu",
+react: "📋",
+desc: "Show command categories",
+category: "main",
+filename: __filename
+}, async (test, m, msg, { from, sender, reply }) => {
+await test.sendMessage(from, { react: { text: "📋", key: m.key } });
 
-  await conn.sendMessage(from, { react: { text: "📋", key: m.key } });
+const commandMap = {};
 
-  const commandMap = {};
+for (const command of commands) {
+if (command.dontAddCommandList) continue;
+const category = (command.category || "MISC").toUpperCase();
+if (!commandMap[category]) commandMap[category] = [];
+commandMap[category].push(command);
+}
 
-  for (const command of commands) {
-    if (command.dontAddCommandList) continue;
+const categories = Object.keys(commandMap);
 
-    const category = (command.category || "MISC").toUpperCase();
-
-    if (!commandMap[category]) commandMap[category] = [];
-    commandMap[category].push(command);
-  }
-
-  const categories = Object.keys(commandMap);
-
-  let menuText =
-`╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
+let menuText = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
 ┃ 👋 Hello!
 ┃ 📋 Select a category number below
 ┃ ⚡ Powered by VIMA-MD
 ╰━━━━━━━━━━━━━━━━⬣
+;
+menuText += ───────────────────────\n;
 
-*📂 CATEGORIES*
-───────────────────────\n`;
-
-  categories.forEach((cat, i) => {
-    const emojiIndex = String(i + 1)
-      .split("")
-      .map(n => numberEmojis[n])
-      .join("");
-
-    menuText += `┃ ${emojiIndex} ${cat} (${commandMap[cat].length})\n`;
-  });
-
-  menuText += `───────────────────────\n💡 Reply with number to open category`;
-
-  await conn.sendMessage(from, {
-    image: { url: headerImage },
-    caption: menuText
-  }, { quoted: m });
-
-  pendingMenu[sender] = {
-    step: "category",
-    commandMap,
-    categories
-  };
+categories.forEach((cat, i) => {
+const emojiIndex = (i + 1).toString().split("").map(n => numberEmojis[n]).join("");
+menuText += ┃ ${emojiIndex} *${cat}* (${commandMap[cat].length})\n;
 });
 
+menuText += ───────────────────────\n;
 
-/* ===================== CATEGORY HANDLER ===================== */
+await test.sendMessage(from, {
+image: { url: headerImage },
+caption: menuText,
+}, { quoted: m });
+
+pendingMenu[sender] = { step: "category", commandMap, categories };
+});
+
 cmd({
-  pattern: null
-}, async (conn, m, msg, { from, sender, body, reply }) => {
+filter: (text, { sender }) => pendingMenu[sender] && pendingMenu[sender].step === "category" && /^[1-9][0-9]*$/.test(text.trim())
+}, async (test, m, msg, { from, body, sender, reply }) => {
+await test.sendMessage(from, { react: { text: "✅", key: m.key } });
 
-  if (!pendingMenu[sender]) return;
-  if (pendingMenu[sender].step !== "category") return;
+const { commandMap, categories } = pendingMenu[sender];
+const index = parseInt(body.trim()) - 1;
+if (index < 0 || index >= categories.length) return reply("❌ Invalid selection.");
 
-  const text = (body || "").trim();
+const selectedCategory = categories[index];
+const cmdsInCategory = commandMap[selectedCategory];
 
-  if (!/^[0-9]+$/.test(text)) return;
+let cmdText = *${selectedCategory} COMMANDS*\n;
+cmdsInCategory.forEach(c => {
+const patterns = [c.pattern, ...(c.alias || [])].filter(Boolean).map(p => .${p});
+cmdText += ${patterns.join(", ")} - ${c.desc || "No description"}\n;
+});
+cmdText += ───────────────────────\n;
+cmdText += Total Commands: ${cmdsInCategory.length}\n;
 
-  const { commandMap, categories } = pendingMenu[sender];
+await test.sendMessage(from, {
+image: { url: headerImage },
+caption: cmdText,
+}, { quoted: m });
 
-  const index = parseInt(text) - 1;
-
-  if (index < 0 || index >= categories.length) {
-    return reply("❌ Invalid selection. Try again.");
-  }
-
-  const selectedCategory = categories[index];
-  const cmdsInCategory = commandMap[selectedCategory];
-
-  await conn.sendMessage(from, { react: { text: "✅", key: m.key } });
-
-  let cmdText =
-`╭━━━〔 *${selectedCategory} COMMANDS* 〕━━━⬣
-\n`;
-
-  cmdsInCategory.forEach(c => {
-    const patterns = [c.pattern, ...(c.alias || [])]
-      .filter(Boolean)
-      .map(p => `.${p}`);
-
-    cmdText += `┃ ${patterns.join(" | ")}\n┃ ➜ ${c.desc || "No description"}\n\n`;
-  });
-
-  cmdText +=
-`───────────────────────
-📦 Total: ${cmdsInCategory.length}
-╰━━━━━━━━━━━━━━━━⬣`;
-
-  await conn.sendMessage(from, {
-    image: { url: headerImage },
-    caption: cmdText
-  }, { quoted: m });
-
-  delete pendingMenu[sender];
+delete pendingMenu[sender];
 });
