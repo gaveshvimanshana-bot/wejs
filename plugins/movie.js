@@ -140,20 +140,20 @@ await browser.close();
 return directLinks;
 }
 
-/* ===================== COMMAND 1 ===================== */
+/* ===================== MOVIE SEARCH ===================== */
 
 cmd({
 pattern: "movie",
 alias: ["sinhalasub","films","cinema"],
 react: "🎬",
-desc: "Search and send movies from Sinhalasub.lk",
+desc: "Search movies",
 category: "download",
 filename: __filename
 }, async (hansa, mek, m, { from, q, sender, reply }) => {
 
-if (!q) return reply("🎬 *Movie Search Plugin*\nUsage: movie name\nExample: movie jangi hora");
+if (!q) return reply("🎬 *Movie Search Plugin*\nUsage: movie name");
 
-reply("🔍 Searching for movies...");
+reply("🔍 Searching...");
 
 const searchResults = await searchMovies(q);
 
@@ -176,7 +176,7 @@ text += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered 
 reply(text);
 });
 
-/* ===================== COMMAND 2 ===================== */
+/* ===================== MOVIE DETAILS ===================== */
 
 cmd({
 filter: (text, { sender }) =>
@@ -194,6 +194,8 @@ delete pendingSearch[sender];
 
 const metadata = await getMovieMetadata(selected.movieUrl);
 
+/* ---------- DETAILS CARD ---------- */
+
 let msg = `🎬 *${metadata.title}*\n\n`;
 
 msg += `📝 Language: ${metadata.language}\n`;
@@ -203,15 +205,21 @@ msg += `🎭 Genres: ${metadata.genres.join(", ")}\n`;
 msg += `🎬 Directors: ${metadata.directors.join(", ")}\n`;
 msg += `🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n\n`;
 
-msg += `🔗 Fetching download links...\n\n`;
 msg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
 
+/* send movie card */
 if (metadata.thumbnail) {
 await hansa.sendMessage(from, { image: { url: metadata.thumbnail }, caption: msg }, { quoted: mek });
 } else {
 await hansa.sendMessage(from, { text: msg }, { quoted: mek });
 }
 
+/* ---------- SEPARATE FETCH MESSAGE ---------- */
+await hansa.sendMessage(from, {
+text: "🔗 Fetching download links... please wait 🍿"
+}, { quoted: mek });
+
+/* ---------- GET LINKS ---------- */
 const downloadLinks = await getPixeldrainLinks(selected.movieUrl);
 
 if (!downloadLinks.length) return reply("❌ No download links found (<2GB)!");
@@ -231,7 +239,7 @@ qualityMsg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Po
 await hansa.sendMessage(from, { text: qualityMsg }, { quoted: mek });
 });
 
-/* ===================== COMMAND 3 ===================== */
+/* ===================== DOWNLOAD ===================== */
 
 cmd({
 filter: (text, { sender }) =>
@@ -249,7 +257,7 @@ delete pendingQuality[sender];
 
 const selectedLink = movie.downloadLinks[index];
 
-reply("⬇️ Sending movie... please wait 🍿");
+reply("⬇️ Sending movie... 🍿");
 
 try {
 const directUrl = getDirectPixeldrainUrl(selectedLink.link);
@@ -261,8 +269,8 @@ fileName: `${movie.metadata.title.substring(0,50)} - ${selectedLink.quality}.mp4
 caption: `🎬 *${movie.metadata.title}*\n\n📊 Quality: ${selectedLink.quality}\n💾 Size: ${selectedLink.size}\n\n━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`
 }, { quoted: mek });
 
-} catch (error) {
-console.log(error);
+} catch (e) {
+console.log(e);
 reply("❌ Failed to send movie");
 }
 });
