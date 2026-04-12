@@ -1,11 +1,13 @@
-const { cmd, commands } = require("../command");
+const { cmd, commands } = require("../command");  
+const fs = require("fs");  
+const path = require("path");  
 
-const pendingMenu = {};
-const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];
+const pendingMenu = {};  
+const numberEmojis = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣"];  
 
-const headerImage =
-  "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";
+const headerImage = "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg";  
 
+// ⏱ runtime function (UNCHANGED - just added)
 function formatRuntime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -13,98 +15,98 @@ function formatRuntime(seconds) {
   return `${h}h ${m}m ${s}s`;
 }
 
-// ================= MENU =================
-cmd({
-  pattern: "menu",
-  react: "📋",
-  category: "main",
-  filename: __filename
-}, async (client, m, msg, { from, sender, pushname }) => {
+cmd({  
+  pattern: "menu",  
+  react: "📋",  
+  desc: "Show command categories",  
+  category: "main",  
+  filename: __filename  
+}, async (test, m, msg, { from, sender, reply, pushname }) => {  
 
-  const commandMap = {};
+  await test.sendMessage(from, { react: { text: "📋", key: m.key } });  
 
-  for (const c of commands) {
-    if (c.dontAddCommandList) continue;
+  const commandMap = {};  
 
-    const cat = (c.category || "MISC").toUpperCase();
-    if (!commandMap[cat]) commandMap[cat] = [];
-    commandMap[cat].push(c);
-  }
+  for (const command of commands) {  
+    if (command.dontAddCommandList) continue;  
+    const category = (command.category || "MISC").toUpperCase();  
+    if (!commandMap[category]) commandMap[category] = [];  
+    commandMap[category].push(command);  
+  }  
 
-  const categories = Object.keys(commandMap);
+  const categories = Object.keys(commandMap);  
+
   const uptime = process.uptime();
 
-  let text = `╭━━━〔 *🤖 MAIN MENU* 〕━━━⬣
-┃ 👋 Hello: *${pushname || "User"}*
-┃ 👑 Owner: *VIMA-MD*
-┃ ⏱ Runtime: *${formatRuntime(uptime)}*
-┃ 📊 Total Cmds: *${commands.length}*
-╰━━━━━━━━━━━━━━━━⬣
-───────────────────────\n`;
+  // 👑 owner (change if you want)
+  const owner = "VIMA-MD";
 
-  categories.forEach((cat, i) => {
-    const num = (i + 1).toString().split("").map(n => numberEmojis[n]).join("");
-    text += `┃ ${num} *${cat}* (${commandMap[cat].length})\n`;
-  });
+  let menuText = `╭━━━〔 *VIMA MD MAIN MENU* 〕━━━◯...  
+┃ 👋 Hello: *${pushname || "User"}*  
+┃ 👑 Owner: *𝙶𝙰𝚅𝙴𝚂𝙷 𝚅𝙸𝙼𝙰𝙽𝚂𝙷𝙰𝙽𝙰*  
+┃ ⏱ Runtime: *${formatRuntime(uptime)}*  
+┃ 🔥 Total Cmds: *${commands.length}*  
+╰━━━━━━━━━━━━━━━━◯.....  
+───────────────────────\n`;  
 
-  text += `───────────────────────\n`;
+  categories.forEach((cat, i) => {  
+    const emojiIndex = (i + 1)
+      .toString()
+      .split("")
+      .map(n => numberEmojis[n])
+      .join("");  
 
-  pendingMenu[sender] = {
-    commandMap,
-    categories,
-    used: false
-  };
+    menuText += `┃ ${emojiIndex} *${cat}* (${commandMap[cat].length})\n`;  
+  });  
 
-  await client.sendMessage(from, {
-    image: { url: headerImage },
-    caption: text,
-  }, { quoted: m });
+  menuText += `───────────────────────\n`;  
 
-});
+  await test.sendMessage(from, {  
+    image: { url: headerImage },  
+    caption: menuText,  
+  }, { quoted: m });  
+
+  pendingMenu[sender] = { step: "category", commandMap, categories };  
+});  
 
 
-// ================= CATEGORY HANDLER (FIXED) =================
-cmd({
-  filter: (text, { sender }) =>
-    pendingMenu[sender] &&
-    /^[1-9][0-9]*$/.test((text || "").trim())
-}, async (client, m, msg, { from, sender, body, reply }) => {
+// ================= CATEGORY SELECT HANDLER =================
 
-  const session = pendingMenu[sender];
-  if (!session) return;
+cmd({  
+  filter: (text, { sender }) =>  
+    pendingMenu[sender] &&  
+    pendingMenu[sender].step === "category" &&  
+    /^[1-9][0-9]*$/.test((text || "").trim())  
+}, async (test, m, msg, { from, body, sender, reply }) => {  
 
-  // 🔥 prevent double trigger
-  if (session.used) return;
-  session.used = true;
+  await test.sendMessage(from, { react: { text: "✅", key: m.key } });  
 
-  const index = parseInt((body || "").trim()) - 1;
+  const { commandMap, categories } = pendingMenu[sender];  
+  const index = parseInt((body || "").trim()) - 1;  
 
-  if (index < 0 || index >= session.categories.length) {
-    delete pendingMenu[sender];
-    return reply("❌ Invalid selection.");
-  }
+  if (index < 0 || index >= categories.length)  
+    return reply("❌ Invalid selection.");  
 
-  const category = session.categories[index];
-  const cmds = session.commandMap[category];
+  const selectedCategory = categories[index];  
+  const cmdsInCategory = commandMap[selectedCategory];  
 
-  let out = `*${category} COMMANDS*\n\n`;
+  let cmdText = `*${selectedCategory} COMMANDS*\n\n`;  
 
-  cmds.forEach(c => {
-    const patterns = [c.pattern, ...(c.alias || [])]
-      .filter(Boolean)
-      .map(p => `.${p}`);
+  cmdsInCategory.forEach(c => {  
+    const patterns = [c.pattern, ...(c.alias || [])]  
+      .filter(Boolean)  
+      .map(p => `.${p}`);  
 
-    out += `${patterns.join(", ")} - ${c.desc || "No description"}\n`;
-  });
+    cmdText += `${patterns.join(", ")} - ${c.desc || "No description"}\n`;  
+  });  
 
-  out += `\n📊 Total: ${cmds.length}`;
+  cmdText += `\n───────────────────────\n`;  
+  cmdText += `📊 Total Commands: ${cmdsInCategory.length}\n`;  
 
-  await client.sendMessage(from, {
-    image: { url: headerImage },
-    caption: out,
-  }, { quoted: m });
+  await test.sendMessage(from, {  
+    image: { url: headerImage },  
+    caption: cmdText,  
+  }, { quoted: m });  
 
-  // 🔥 reset properly (important)
-  delete pendingMenu[sender];
-
+  delete pendingMenu[sender];  
 });
