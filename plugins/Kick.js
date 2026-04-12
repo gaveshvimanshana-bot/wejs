@@ -7,9 +7,6 @@ cmd({
     filename: __filename
 },
 async (conn, mek, m, { from, q, isOwner, reply }) => {
-if (!isOwner) {
-    return reply("❌ Owner Only");
-}
 if (!q || !m.quoted) {
     return reply("❌ Please reply to a message/file and provide a JID\n\nExample: .forward 947xxxxx@s.whatsapp.net");
 }
