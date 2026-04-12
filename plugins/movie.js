@@ -175,7 +175,7 @@ text += `━━━━━━━━━━━━━━\n✨ Nexus5\n> Powered by Vi
 
 /* SEND IMAGE + CAPTION */
 await hansa.sendMessage(from, {
-image: { url: searchResults[0]?.thumb || "https://i.ibb.co/7QpKsCX/movie-banner.jpg" },
+image: { url: searchResults[0]?.thumb || "https://raw.githubusercontent.com/gaveshvimanshana-bot/wejs/main/Image/thumb-1920-1238268.jpg" },
 caption: text
 }, { quoted: mek });
 
