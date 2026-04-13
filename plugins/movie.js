@@ -1,14 +1,6 @@
 const { cmd } = require("../command");
 const puppeteer = require("puppeteer");
 
-/* ===================== HEADER ===================== */
-const HEADER = `
-▥ ░ 𝚅𝙸𝙼𝙰 𝙼𝙳 𝙼𝙾𝚅𝙸𝙴 ░▥
-
-> ┅             ⫷𝐏𝐎𝐖𝐄𝐑𝐃 𝐁𝐘⫸
-> 🔸┏𝐕𝐈𝐌𝐀 𝐌𝐃┚         ┅
-`;
-
 const pendingSearch = {};
 const pendingQuality = {};
 
@@ -22,13 +14,13 @@ return text;
 }
 
 function getDirectPixeldrainUrl(url) {
-const match = url.match(/pixeldrain.com\/u\/(\w+)/);
+const match = url.match(/pixeldrain.com/u/(\w+)/);
 if (!match) return null;
-return `https://pixeldrain.com/api/file/${match[1]}?download`;
+return https://pixeldrain.com/api/file/${match[1]}?download;
 }
 
 async function searchMovies(query) {
-const searchUrl = `https://sinhalasub.lk/?s=${encodeURIComponent(query)}&post_type=movies`;
+const searchUrl = https://sinhalasub.lk/?s=${encodeURIComponent(query)}&post_type=movies;
 
 const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage();
@@ -159,26 +151,27 @@ category: "download",
 filename: __filename
 }, async (hansa, mek, m, { from, q, sender, reply }) => {
 
-if (!q) return reply(`${HEADER}\n🎬 *Movie Search Plugin*\nUsage: movie name`);
+if (!q) return reply("🎬 Movie Search Plugin\nUsage: movie name");
 
 reply("🔍 Searching...");
 
 const searchResults = await searchMovies(q);
 
-if (!searchResults.length) return reply(`${HEADER}\n❌ No movies found!`);
+if (!searchResults.length) return reply("❌ No movies found!");
 
 pendingSearch[sender] = { results: searchResults, timestamp: Date.now() };
 
-let text = `${HEADER}\n🎬 *Search Results*\n\n`;
+let text = "🎬 Search Results\n\n";
 
 searchResults.forEach((m, i) => {
-text += `*${i + 1}.* ${m.title}\n`;
-text += `   📝 Language: ${m.language}\n`;
-text += `   📊 Quality: ${m.quality}\n`;
-text += `   🎞️ Format: ${m.qty}\n\n`;
+text += *${i + 1}.* ${m.title}\n;
+text +=    📝 Language: ${m.language}\n;
+text +=    📊 Quality: ${m.quality}\n;
+text +=    🎞️ Format: ${m.qty}\n\n;
 });
 
-text += `📌 Reply with number (1-${searchResults.length})`;
+text += 📌 Reply with number (1-${searchResults.length})\n\n;
+text += ━━━━━━━━━━━━━━\n ▥░ 𝚅𝙸𝙼𝙰 𝙼𝙳 𝙼𝙾𝚅𝙸𝙴░▥\n> ⫷𝐏𝐎𝐖𝐄𝐑𝐃 𝐁𝐘⫸ ┏𝐕𝐈𝐌𝐀 𝐌𝐃┚ \n━━━━━━━━━━━━━━;
 
 reply(text);
 });
@@ -201,40 +194,47 @@ delete pendingSearch[sender];
 
 const metadata = await getMovieMetadata(selected.movieUrl);
 
-let msg = `${HEADER}\n🎬 *${metadata.title}*\n\n`;
+/* ---------- DETAILS CARD ---------- */
 
-msg += `📝 Language: ${metadata.language}\n`;
-msg += `⏱️ Duration: ${metadata.duration}\n`;
-msg += `⭐ IMDb: ${metadata.imdb}\n`;
-msg += `🎭 Genres: ${metadata.genres.join(", ")}\n`;
-msg += `🎬 Directors: ${metadata.directors.join(", ")}\n`;
-msg += `🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n`;
+let msg = 🎬 *${metadata.title}*\n\n;
 
+msg += 📝 Language: ${metadata.language}\n;
+msg += ⏱️ Duration: ${metadata.duration}\n;
+msg += ⭐ IMDb: ${metadata.imdb}\n;
+msg += 🎭 Genres: ${metadata.genres.join(", ")}\n;
+msg += 🎬 Directors: ${metadata.directors.join(", ")}\n;
+msg += 🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n\n;
+
+msg += ━━━━━━━━━━━━━━\n ▥ ░ 𝚅𝙸𝙼𝙰 𝙼𝙳 𝙼𝙾𝚅𝙸𝙴░▥\n> ⫷𝐏𝐎𝐖𝐄𝐑𝐃 𝐁𝐘⫸ ┏𝐕𝐈𝐌𝐀 𝐌𝐃┚\n━━━━━━━━━━━━━━;
+
+/* send movie card */
 if (metadata.thumbnail) {
 await hansa.sendMessage(from, { image: { url: metadata.thumbnail }, caption: msg }, { quoted: mek });
 } else {
 await hansa.sendMessage(from, { text: msg }, { quoted: mek });
 }
 
+/* ---------- SEPARATE FETCH MESSAGE ---------- */
 await hansa.sendMessage(from, {
 text: "🔗 Fetching download links... please wait 🍿"
 }, { quoted: mek });
 
+/* ---------- GET LINKS ---------- */
 const downloadLinks = await getPixeldrainLinks(selected.movieUrl);
 
-if (!downloadLinks.length) return reply(`${HEADER}\n❌ No download links found (<2GB)!`);
+if (!downloadLinks.length) return reply("❌ No download links found (<2GB)!");
 
 pendingQuality[sender] = { movie: { metadata, downloadLinks }, timestamp: Date.now() };
 
-let qualityMsg = `${HEADER}\n📥 *Available Qualities*\n\n`;
+let qualityMsg = "📥 Available Qualities\n\n";
 
 downloadLinks.forEach((d,i) => {
-qualityMsg += `*${i + 1}.* 🎞️ ${d.quality}\n`;
-qualityMsg += `   💾 Size: ${d.size}\n\n`;
+qualityMsg += *${i + 1}.* 🎞️ ${d.quality}\n;
+qualityMsg +=    💾 Size: ${d.size}\n\n;
 });
 
-qualityMsg += `📌 Reply with number to download 🍿`;
-
+qualityMsg += 📌 Reply with number to download 🍿\n\n;
+qualityMsg += ━━━━━━━━━━━━━━\n ▥ ░ 𝚅𝙸𝙼𝙰 𝙼𝙳 𝙼𝙾𝚅𝙸𝙴░▥\n> ⫷𝐏𝐎𝐖𝐄𝐑𝐃 𝐁𝐘⫸┏𝐕𝐈𝐌𝐀 𝐌𝐃┚
 await hansa.sendMessage(from, { text: qualityMsg }, { quoted: mek });
 });
 
@@ -264,18 +264,13 @@ const directUrl = getDirectPixeldrainUrl(selectedLink.link);
 await hansa.sendMessage(from, {
 document: { url: directUrl },
 mimetype: "video/mp4",
-fileName: `${movie.metadata.title.substring(0,50)} - ${selectedLink.quality}.mp4`,
-caption: `${HEADER}
-
-🎬 *${movie.metadata.title}*
-
-📊 Quality: ${selectedLink.quality}
-💾 Size: ${selectedLink.size}`
+fileName: ${movie.metadata.title.substring(0,50)} - ${selectedLink.quality}.mp4,
+caption: 🎬 *${movie.metadata.title}*\n\n📊 Quality: ${selectedLink.quality}\n💾 Size: ${selectedLink.size}\n\n━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━
 }, { quoted: mek });
 
 } catch (e) {
 console.log(e);
-reply(`${HEADER}\n❌ Failed to send movie`);
+reply("❌ Failed to send movie");
 }
 });
 
