@@ -1,6 +1,16 @@
 const { cmd } = require("../command");
 const getFbVideoInfo = require("@xaviabot/fb-downloader");
 
+// HTML decode function 🔥
+function decodeHtml(html) {
+  return html
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 cmd(
   {
     pattern: "fb",
@@ -19,14 +29,6 @@ cmd(
         return reply("❌ Invalid Facebook URL!");
       }
 
-      const react = async (msgKey, emoji) => {
-        try {
-          await conn.sendMessage(from, {
-            react: { text: emoji, key: msgKey },
-          });
-        } catch {}
-      };
-
       await reply("📥 Fetching video info...");
 
       const result = await getFbVideoInfo(q);
@@ -35,63 +37,66 @@ cmd(
         return reply("❌ Failed to fetch video.");
       }
 
-      const { title, sd, hd } = result;
+      let { title, sd, hd } = result;
 
-      //================== BUTTON MESSAGE ==================
-      const buttons = [
-        { buttonId: "fb_hd", buttonText: { displayText: "🎥 HD Quality" }, type: 1 },
-        { buttonId: "fb_sd", buttonText: { displayText: "📉 SD Quality" }, type: 1 }
-      ];
+      // decode title 🔥
+      title = decodeHtml(title || "Unknown");
 
-      const buttonMsg = await conn.sendMessage(
-        from,
-        {
-          image: {
-            url: "https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png",
+      //================== LIST MESSAGE ==================
+      const listMsg = {
+        text:
+          `╭━━〔 *FB VIDEO INFO* 〕━━╮\n\n` +
+          `👻 *Title* : ${title}\n\n` +
+          `🔘 Select Quality Below 👇\n\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
+        footer: "VIMA-✘-MD",
+        title: "FB DOWNLOADER",
+        buttonText: "Choose Quality",
+        sections: [
+          {
+            title: "Quality Options",
+            rows: [
+              { title: "🎥 HD Quality", rowId: "fb_hd" },
+              { title: "📉 SD Quality", rowId: "fb_sd" },
+            ],
           },
-          caption:
-            `╭━━〔 *FB VIDEO INFO* 〕━━╮\n\n` +
-            `👻 *Title* : ${title || "Unknown"}\n\n` +
-            `🔘 *Select Quality Below*\n\n` +
-            `╰━━━━━━━━━━━━━━━━━━━━╯`,
-          buttons: buttons,
-          headerType: 4,
-        },
-        { quoted: mek }
-      );
+        ],
+      };
 
-      const msgId = buttonMsg.key.id;
+      const sentMsg = await conn.sendMessage(from, listMsg, {
+        quoted: mek,
+      });
 
-      //================== LISTENER ==================
+      const msgId = sentMsg.key.id;
+
+      //================== HANDLER ==================
       const handler = async (update) => {
         const msg = update?.messages?.[0];
         if (!msg?.message) return;
 
-        const btnId =
-          msg.message?.buttonsResponseMessage?.selectedButtonId;
+        const selected =
+          msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId;
 
         const isReply =
-          msg?.message?.buttonsResponseMessage?.contextInfo?.stanzaId === msgId;
+          msg.message?.listResponseMessage?.contextInfo?.stanzaId === msgId;
 
         if (!isReply) return;
-        if (!btnId) return;
-
-        await react(msg.key, "🎥");
+        if (!selected) return;
 
         let videoUrl;
         let quality;
 
-        if (btnId === "fb_hd") {
+        if (selected === "fb_hd") {
           videoUrl = hd || sd;
           quality = "HD";
-        } else if (btnId === "fb_sd") {
+        } else if (selected === "fb_sd") {
           videoUrl = sd;
           quality = "SD";
         } else {
           return;
         }
 
-        // remove listener ✅
+        // remove listener 🔥
         conn.ev.off("messages.upsert", handler);
 
         //================== SEND VIDEO ==================
@@ -102,7 +107,7 @@ cmd(
             caption:
               `╭━━〔 📥 VIDEO DOWNLOADED 〕━━╮\n` +
               `📡 Quality : ${quality}\n` +
-              `🎬 ${title || ""}\n\n` +
+              `🎬 ${title}\n\n` +
               `⚡ VIMA-✘-MD BOT\n` +
               `╰━━━━━━━━━━━━━━━━━━━━╯`,
           },
