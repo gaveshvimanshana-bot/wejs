@@ -88,7 +88,7 @@ cmd(
     alias: ["s", "ss", "stic"],
     react: "🤹‍♀️",
     desc: "Convert photo/sticker/text into a rounded sticker (Sinhala supported).",
-    category: "tools",
+    category: "owner",
     use: ".sticker <reply to image/sticker | text> [--circle|--rounded|--square] [--radius=80]",
     filename: __filename,
   },
