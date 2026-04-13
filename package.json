@@ -43,7 +43,8 @@
     "os": "^0.1.2",
     "qrcode": "^1.5.4",
     "wa-sticker-formatter": "^4.4.4",
-    "canvas": "^3.2.3"
+    "canvas": "^3.2.3",
+    "assets": "^3.0.1"
 
   }
 }
