@@ -1,84 +1,126 @@
-const axios = require("axios");
-const FormData = require('form-data');
-const fs = require('fs');
-const os = require('os');
-const path = require("path");
-const { cmd, commands } = require("../command");
+const { cmd, commands } = require('../command');
+const { fetchJson } = require('../lib/functions');
 
-cmd({
-  'pattern': "tourl",
-  'alias': ["imgtourl", "imgurl", "url", "geturl", "img2url"],
-  'react': '🖇️',
-  'desc': "Convert media to Catbox URL",
-  'category': "utility",
-  'use': ".tourl [reply to media]",
-  'filename': __filename
-}, async (client, message, args, { reply }) => {
-  try {
-    // Check if quoted message exists and has media
-    const quotedMsg = message.quoted ? message.quoted : message;
-    const mimeType = (quotedMsg.msg || quotedMsg).mimetype || '';
-    
-    if (!mimeType) {
-      throw "Please reply to an image, video, or audio file";
+const hirux_footer = "> *𝙃𝙄𝙍𝙐 - 𝙓 - 𝙈𝘿 - 𝘽𝙊𝙏*";
+
+cmd(
+    {
+        pattern: "xnxx",
+        alias: ["xvdl", "xvideo"],
+        use: ".xnxx <xnxx video name>",
+        react: "🔞",
+        desc: "Search and download xnxx.com 18+ videos.",
+        category: "download",
+        filename: __filename
+    }, async (conn, mek, m, {q, from, reply}) => {
+        
+        const react = async (msgKey, emoji) => {
+    try {
+      await conn.sendMessage(from, {
+        react: {
+          text: emoji,
+          key: msgKey
+        }
+      });
+    } catch (e) {
+      console.error("Reaction error:", e.message);
     }
-
-    // Download the media
-    const mediaBuffer = await quotedMsg.download();
-    const tempFilePath = path.join(os.tmpdir(), `catbox_upload_${Date.now()}`);
-    fs.writeFileSync(tempFilePath, mediaBuffer);
-
-    // Get file extension based on mime type
-    let extension = '';
-    if (mimeType.includes('image/jpeg')) extension = '.jpg';
-    else if (mimeType.includes('image/png')) extension = '.png';
-    else if (mimeType.includes('video')) extension = '.mp4';
-    else if (mimeType.includes('audio')) extension = '.mp3';
-    
-    const fileName = `file${extension}`;
-
-    // Prepare form data for Catbox
-    const form = new FormData();
-    form.append('fileToUpload', fs.createReadStream(tempFilePath), fileName);
-    form.append('reqtype', 'fileupload');
-
-    // Upload to Catbox
-    const response = await axios.post("https://catbox.moe/user/api.php", form, {
-      headers: form.getHeaders()
+  };
+        try {
+            
+            if (!q) {
+                await reply("*Please enter xnxx.com video name !!*")
+            }
+            
+            const xnxxSearchapi = await fetchJson(`https://tharuzz-ofc-api-v2.vercel.app/api/search/xvsearch?query=${q}`);
+            
+            if (!xnxxSearchapi.result.xvideos) {
+                await reply("No result found you enter xnxx video name :(")
+            }
+            
+            let list = "🔞 𝙃𝙄𝙍𝙐 𝙓 𝙈𝘿 𝙓𝙉𝙓𝙓 𝙑𝙄𝘿𝙀𝙊 𝙎𝙀𝘼𝙍𝘾𝙃 𝙍𝙀𝙎𝘼𝙇𝙏𝙎\n\n";
+            
+            xnxxSearchapi.result.xvideos.forEach((xnxx, i) => {
+      list += `*\`${i + 1}\` | | ${xnxx.title || "No title info"}*\n`;
     });
+          
+          const listMsg = await conn.sendMessage(from, { text: list + "\n🔢 *ʀᴇᴘʟʏ ʙᴇʟᴏᴡ ᴀ ɴᴜᴍʙᴇʀ ᴄʜᴏᴏꜱᴇ ᴀ ʀᴇᴀᴜʟᴛ.*\n\n" + hirux_footer }, { quoted: mek });
+          const listMsgId = listMsg.key.id;
+          
+          conn.ev.on("messages.upsert", async (update) => {
+              
+              const msg = update?.messages?.[0];
+              if (!msg?.message) return;
 
-    if (!response.data) {
-      throw "Error uploading to Catbox";
+              const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
+              const isReplyToList = msg?.message?.extendedTextMessage?.contextInfo?.stanzaId === listMsgId;
+              if (!isReplyToList) return;
+              
+              const index = parseInt(text.trim()) - 1;
+              if (isNaN(index) || index < 0 || index >= xnxxSearchapi.result.xvideos.length) return reply("❌ *`ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ ᴘʟᴇᴀꜱᴇ ᴇɴᴛᴇʀ ᴠᴀʟɪᴅ  ɴᴜᴍʙᴇʀ.`*");
+              await react(msg.key, '✅');
+              
+              const chosen = xnxxSearchapi.result.xvideos[index];
+              
+              const xnxxDownloadapi = await fetchJson(`https://tharuzz-ofc-api-v2.vercel.app/api/download/xvdl?url=${chosen.link}`);
+              
+              const infoMap = xnxxDownloadapi?.result;
+              
+              const downloadUrllow = xnxxDownloadapi?.result?.dl_Links?.lowquality;
+              
+              const downloadUrlhigh = xnxxDownloadapi?.result?.dl_Links?.highquality;
+              
+              const askType = await conn.sendMessage(
+            from,{
+                image: {url: infoMap.thumbnail },
+                caption: `*🔞 \`*𝙓𝙉𝙓𝙓 𝙑𝙄𝘿𝙀𝙊 𝙄𝙉𝙁𝙊*\`*\n\n` +
+                `*☘️ \`Title:\` ${infoMap.title}*\n` + 
+                `*⏰ \`Duration:\` ${infoMap.duration}*\n\n` +
+                `*🔢 \`Reply below number:\`*\n\n` +
+                `*1 | | 🔋ʜᴅ Qᴜᴀʟɪᴛʏ*\n` +
+                `*2 | | 🪫ꜱᴅ Qᴜᴀʟɪᴛʏ*\n\n` + hirux_footer
+            }, { quoted:msg }
+        );
+            
+            const typeMsgId = askType.key.id; 
+            
+            conn.ev.on("messages.upsert", async (tUpdate) => {
+                
+                const tMsg = tUpdate?.messages?.[0];
+            if (!tMsg?.message) return;
+
+            const tText = tMsg.message?.conversation || tMsg.message?.extendedTextMessage?.text;
+            const isReplyToType = tMsg?.message?.extendedTextMessage?.contextInfo?.stanzaId === typeMsgId;
+            if (!isReplyToType) return;
+       
+            await react(tMsg.key, tText.trim() === "1" ? '🎥' : tText.trim() === "2" ? '🎥' : '❓');
+            
+            if (tText.trim() === "1") {
+                await conn.sendMessage(
+                    from,
+                    {
+                      video: {url: downloadUrlhigh },
+                      caption: `*🔞 Here is your xnxx high quality video.*\n\n> ${infoMap.title}`
+                    }, {quoted: tMsg}
+                )
+            } else if (tText.trim() === "2") {
+                await conn.sendMessage(
+                    from, {
+                        video: {url: downloadUrllow },
+                        caption: `*🔞 Here is your xnxx low quality video.*\n\n> ${infoMap.title}`
+
+                    }, {quoted: tMsg}
+                )
+            } else {
+                await conn.sendMessage(from, { text: "❌ *`ɪɴᴠᴀʟɪᴅᴇ ɪɴᴘᴜᴛ. 1ꜰᴏʀ ᴠɪᴅᴇᴏ high quality ᴛʏᴘᴇ / 2 ꜰᴏʀ video low quality ᴛʏᴘᴇ`*" }, { quoted: tMsg });
+            }
+            });
+          });
+        } catch (e) {
+            console.log(e);
+            await reply("*❌ Error: " + e + "*")
+        }
     }
+);
 
-    const mediaUrl = response.data;
-    fs.unlinkSync(tempFilePath);
 
-    // Determine media type for response
-    let mediaType = 'File';
-    if (mimeType.includes('image')) mediaType = 'Image';
-    else if (mimeType.includes('video')) mediaType = 'Video';
-    else if (mimeType.includes('audio')) mediaType = 'Audio';
-
-    // Send response
-    await reply(
-      `*${mediaType} 𝚄𝚙𝚕𝚘𝚊𝚍𝚎𝚍 𝚂𝚞𝚌𝚌𝚎𝚜𝚜𝚏𝚞𝚕𝚕𝚢*\n\n` +
-      `*☘️𝗦𝗶𝘇𝗲:* ${formatBytes(mediaBuffer.length)}\n` +
-      `*📎𝗟𝗶𝗻𝗸:* ${mediaUrl}\n\n` +
-      `> *𝙃𝙄𝙍𝙐 - 𝙓 - 𝙈𝘿 - 𝘽𝙊𝙏* `
-    );
-
-  } catch (error) {
-    console.error(error);
-    await reply(`Error: ${error.message || error}`);
-  }
-});
-
-// Helper function to format bytes
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
