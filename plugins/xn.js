@@ -10,7 +10,7 @@ cmd(
     category: "download",
     filename: __filename,
   },
-  async (danuwa, mek, m, { from, q, reply }) => {
+  async (conn, mek, m, { from, q, reply }) => {
     try {
       if (!q) return reply("❌ Please provide a Facebook video URL!");
 
@@ -18,6 +18,14 @@ cmd(
       if (!fbRegex.test(q)) {
         return reply("❌ Invalid Facebook URL!");
       }
+
+      const react = async (msgKey, emoji) => {
+        try {
+          await conn.sendMessage(from, {
+            react: { text: emoji, key: msgKey },
+          });
+        } catch {}
+      };
 
       await reply("📥 Fetching video info...");
 
@@ -29,57 +37,65 @@ cmd(
 
       const { title, sd, hd } = result;
 
-      //================== ASK QUALITY ==================
-      const ask = await danuwa.sendMessage(
+      //================== BUTTON MESSAGE ==================
+      const buttons = [
+        { buttonId: "fb_hd", buttonText: { displayText: "🎥 HD Quality" }, type: 1 },
+        { buttonId: "fb_sd", buttonText: { displayText: "📉 SD Quality" }, type: 1 }
+      ];
+
+      const buttonMsg = await conn.sendMessage(
         from,
         {
-          text:
-            `╭━━〔 *FB VIDEO DOWNLOADER* 〕━━╮\n\n` +
+          image: {
+            url: "https://raw.githubusercontent.com/gaveshvimanshana-bot/Dinu-md-/refs/heads/main/Imqge/file_0000000025707208a5167eff51d93f68%20(1).png",
+          },
+          caption:
+            `╭━━〔 *FB VIDEO INFO* 〕━━╮\n\n` +
             `👻 *Title* : ${title || "Unknown"}\n\n` +
-            `🔢 *Reply below number:*\n\n` +
-            `1 | 🎥 HD Quality\n` +
-            `2 | 📉 SD Quality\n\n` +
+            `🔘 *Select Quality Below*\n\n` +
             `╰━━━━━━━━━━━━━━━━━━━━╯`,
+          buttons: buttons,
+          headerType: 4,
         },
         { quoted: mek }
       );
 
-      const msgId = ask.key.id;
+      const msgId = buttonMsg.key.id;
 
       //================== LISTENER ==================
       const handler = async (update) => {
         const msg = update?.messages?.[0];
         if (!msg?.message) return;
 
-        const text =
-          msg.message?.conversation ||
-          msg.message?.extendedTextMessage?.text;
+        const btnId =
+          msg.message?.buttonsResponseMessage?.selectedButtonId;
 
         const isReply =
-          msg?.message?.extendedTextMessage?.contextInfo?.stanzaId === msgId;
+          msg?.message?.buttonsResponseMessage?.contextInfo?.stanzaId === msgId;
 
         if (!isReply) return;
+        if (!btnId) return;
 
-        const choice = text.trim();
+        await react(msg.key, "🎥");
 
         let videoUrl;
         let quality;
 
-        if (choice === "1") {
+        if (btnId === "fb_hd") {
           videoUrl = hd || sd;
           quality = "HD";
-        } else if (choice === "2") {
+        } else if (btnId === "fb_sd") {
           videoUrl = sd;
           quality = "SD";
         } else {
-          return reply("❌ Invalid choice! Reply 1 or 2");
+          return;
         }
 
-        // remove listener after use ✅
-        danuwa.ev.off("messages.upsert", handler);
+        // remove listener ✅
+        conn.ev.off("messages.upsert", handler);
 
         //================== SEND VIDEO ==================
-        await danuwa.sendMessage(
+        await conn.sendMessage(
           from,
           {
             video: { url: videoUrl },
@@ -94,7 +110,7 @@ cmd(
         );
       };
 
-      danuwa.ev.on("messages.upsert", handler);
+      conn.ev.on("messages.upsert", handler);
 
     } catch (e) {
       console.error(e);
