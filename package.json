@@ -41,7 +41,8 @@
     "cheerio": "^1.2.0",
     "node-fetch": "^3.3.2",
     "os": "^0.1.2",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "wa-sticker-formatter": "^4.4.4"
 
   }
 }
