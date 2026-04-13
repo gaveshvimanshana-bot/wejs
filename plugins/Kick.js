@@ -2,7 +2,7 @@ const { cmd } = require('../command');
 
 cmd({
     pattern: "forward",
-    desc: "forward messages without watermark",
+    desc: "forward messages without watermark", 
     alias: ["fv"],
     category: "owner",
     filename: __filename
