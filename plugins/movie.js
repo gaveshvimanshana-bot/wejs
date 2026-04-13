@@ -1,6 +1,14 @@
 const { cmd } = require("../command");
 const puppeteer = require("puppeteer");
 
+/* ===================== HEADER ===================== */
+const HEADER = `
+▥ ░ 𝚅𝙸𝙼𝙰 𝙼𝙳 𝙼𝙾𝚅𝙸𝙴 ░▥
+
+> ┅             ⫷𝐏𝐎𝐖𝐄𝐑𝐃 𝐁𝐘⫸
+> 🔸┏𝐕𝐈𝐌𝐀 𝐌𝐃┚         ┅
+`;
+
 const pendingSearch = {};
 const pendingQuality = {};
 
@@ -151,17 +159,17 @@ category: "download",
 filename: __filename
 }, async (hansa, mek, m, { from, q, sender, reply }) => {
 
-if (!q) return reply("🎬 *Movie Search Plugin*\nUsage: movie name");
+if (!q) return reply(`${HEADER}\n🎬 *Movie Search Plugin*\nUsage: movie name`);
 
 reply("🔍 Searching...");
 
 const searchResults = await searchMovies(q);
 
-if (!searchResults.length) return reply("❌ No movies found!");
+if (!searchResults.length) return reply(`${HEADER}\n❌ No movies found!`);
 
 pendingSearch[sender] = { results: searchResults, timestamp: Date.now() };
 
-let text = "🎬 *Search Results*\n\n";
+let text = `${HEADER}\n🎬 *Search Results*\n\n`;
 
 searchResults.forEach((m, i) => {
 text += `*${i + 1}.* ${m.title}\n`;
@@ -170,8 +178,7 @@ text += `   📊 Quality: ${m.quality}\n`;
 text += `   🎞️ Format: ${m.qty}\n\n`;
 });
 
-text += `📌 Reply with number (1-${searchResults.length})\n\n`;
-text += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
+text += `📌 Reply with number (1-${searchResults.length})`;
 
 reply(text);
 });
@@ -194,47 +201,39 @@ delete pendingSearch[sender];
 
 const metadata = await getMovieMetadata(selected.movieUrl);
 
-/* ---------- DETAILS CARD ---------- */
-
-let msg = `🎬 *${metadata.title}*\n\n`;
+let msg = `${HEADER}\n🎬 *${metadata.title}*\n\n`;
 
 msg += `📝 Language: ${metadata.language}\n`;
 msg += `⏱️ Duration: ${metadata.duration}\n`;
 msg += `⭐ IMDb: ${metadata.imdb}\n`;
 msg += `🎭 Genres: ${metadata.genres.join(", ")}\n`;
 msg += `🎬 Directors: ${metadata.directors.join(", ")}\n`;
-msg += `🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n\n`;
+msg += `🌟 Stars: ${metadata.stars.slice(0,5).join(", ")}\n`;
 
-msg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
-
-/* send movie card */
 if (metadata.thumbnail) {
 await hansa.sendMessage(from, { image: { url: metadata.thumbnail }, caption: msg }, { quoted: mek });
 } else {
 await hansa.sendMessage(from, { text: msg }, { quoted: mek });
 }
 
-/* ---------- SEPARATE FETCH MESSAGE ---------- */
 await hansa.sendMessage(from, {
 text: "🔗 Fetching download links... please wait 🍿"
 }, { quoted: mek });
 
-/* ---------- GET LINKS ---------- */
 const downloadLinks = await getPixeldrainLinks(selected.movieUrl);
 
-if (!downloadLinks.length) return reply("❌ No download links found (<2GB)!");
+if (!downloadLinks.length) return reply(`${HEADER}\n❌ No download links found (<2GB)!`);
 
 pendingQuality[sender] = { movie: { metadata, downloadLinks }, timestamp: Date.now() };
 
-let qualityMsg = "📥 *Available Qualities*\n\n";
+let qualityMsg = `${HEADER}\n📥 *Available Qualities*\n\n`;
 
 downloadLinks.forEach((d,i) => {
 qualityMsg += `*${i + 1}.* 🎞️ ${d.quality}\n`;
 qualityMsg += `   💾 Size: ${d.size}\n\n`;
 });
 
-qualityMsg += `📌 Reply with number to download 🍿\n\n`;
-qualityMsg += `━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`;
+qualityMsg += `📌 Reply with number to download 🍿`;
 
 await hansa.sendMessage(from, { text: qualityMsg }, { quoted: mek });
 });
@@ -266,12 +265,17 @@ await hansa.sendMessage(from, {
 document: { url: directUrl },
 mimetype: "video/mp4",
 fileName: `${movie.metadata.title.substring(0,50)} - ${selectedLink.quality}.mp4`,
-caption: `🎬 *${movie.metadata.title}*\n\n📊 Quality: ${selectedLink.quality}\n💾 Size: ${selectedLink.size}\n\n━━━━━━━━━━━━━━\n✨ Vima Nexus5\n> Powered by Vima MD 🤖\n━━━━━━━━━━━━━━`
+caption: `${HEADER}
+
+🎬 *${movie.metadata.title}*
+
+📊 Quality: ${selectedLink.quality}
+💾 Size: ${selectedLink.size}`
 }, { quoted: mek });
 
 } catch (e) {
 console.log(e);
-reply("❌ Failed to send movie");
+reply(`${HEADER}\n❌ Failed to send movie`);
 }
 });
 
